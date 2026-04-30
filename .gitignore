@@ -169,3 +169,7 @@ tensorboard/
 scratch/
 tmp/
 .temp/
+
+# log artifacts
+*.err
+*.out
