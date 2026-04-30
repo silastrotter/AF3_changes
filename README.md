@@ -1,14 +1,14 @@
-# AF3 Finetuning Guide
+# AF3 Finetuning Guide 🧬
 
 This repo is set up for a simple 3-step workflow:
 
-1. Extract screening features with `scripts/predict_binder.sh`
-2. Train a confidence classifier with `scripts/train_confidence_classifier.sh`
-3. Finetune the full model with `scripts/finetune_classifier.sh`
+1. 🔎 Extract screening features with `scripts/predict_binder.sh`
+2. 🧠 Train a confidence classifier with `scripts/train_confidence_classifier.sh`
+3. 🚀 Finetune the full model with `scripts/finetune_classifier.sh`
 
 Run all commands from the repository root.
 
-## Scripts layout
+## Scripts layout 🗂️
 
 All runnable shell entrypoints are in `scripts/`:
 
@@ -21,16 +21,16 @@ All runnable shell entrypoints are in `scripts/`:
 - `scripts/get_confidence_and_distance.sh`: compute confidence/distance outputs for analysis.
 - `scripts/eval_auc.sh`: evaluate model/classifier performance (AUC pipeline).
 
-## Finetuning showcase: pre vs post structure
+## Finetuning showcase: pre vs post structure 🧪
 
 Example prediction pair for the same target (`NMT2GNEAALRS`):
 
 - Post-finetune: `output/NMT2GNEAALRS_after_train/seed_101/predictions/NMT2GNEAALRS_after_train_sample_0.cif`
 - Pre-finetune: `output/NMT2GNEAALRS_pre_train/seed_101/predictions/NMT2GNEAALRS_pre_train_sample_0.cif`
 
-<object data="assets/before_after_finetune.pdf" type="application/pdf" width="100%" height="780">
-  <a href="assets/before_after_finetune.pdf">View before/after finetuning figure (PDF)</a>
-</object>
+![Before/after finetuning figure](assets/before_after_finetune_preview.jpg)
+
+Full-resolution PDF: [`assets/before_after_finetune.pdf`](assets/before_after_finetune.pdf)
 
 You can open both files in PyMOL/ChimeraX and compare them directly.
 
@@ -50,13 +50,13 @@ align NMT2GNEAALRS_after_train_sample_0, NMT2GNEAALRS_pre_train_sample_0
 
 This side-by-side view removes residues `1-106`, aligns post-finetune to pre-finetune, and colors each chain consistently by chain number.
 
-## AF3 finetuning model architecture
+## AF3 finetuning model architecture 🏗️
 
-<object data="assets/AF3_finetune_model_architecture.pdf" type="application/pdf" width="100%" height="780">
-  <a href="assets/AF3_finetune_model_architecture.pdf">View AF3 finetuning model architecture (PDF)</a>
-</object>
+![AF3 finetuning model architecture](assets/AF3_finetune_model_architecture_preview.jpg)
 
-## 0) Environment setup
+Full-resolution PDF: [`assets/AF3_finetune_model_architecture.pdf`](assets/AF3_finetune_model_architecture.pdf)
+
+## 0) Environment setup ⚙️
 
 ```bash
 conda env create -f environment.yml
@@ -70,7 +70,7 @@ Optional but recommended:
 export LAYERNORM_TYPE=fast_layernorm
 ```
 
-## 1) Extract features (`scripts/predict_binder.sh`)
+## 1) Extract features (`scripts/predict_binder.sh`) 🔎
 
 Before running, edit `scripts/predict_binder.sh`:
 
@@ -90,7 +90,7 @@ bash scripts/predict_binder.sh 3
 
 Use these outputs to prepare the feature/label tensors consumed in Step 2.
 
-## 2) Train classifier (`scripts/train_confidence_classifier.sh`)
+## 2) Train classifier (`scripts/train_confidence_classifier.sh`) 🧠
 
 You have two ways to train the classifier:
 
@@ -120,7 +120,7 @@ Alternatively, for direct classifier training without separately pre-caching fea
 bash scripts/train_classifier_only.sh
 ```
 
-## 3) Finetune full model (`scripts/finetune_classifier.sh`)
+## 3) Finetune full model (`scripts/finetune_classifier.sh`) 🚀
 
 Before running, edit `scripts/finetune_classifier.sh`:
 
@@ -137,7 +137,7 @@ Run:
 bash scripts/finetune_classifier.sh
 ```
 
-## End-to-end commands
+## End-to-end commands ▶️
 
 Pre-cached features workflow:
 
@@ -159,7 +159,7 @@ Direct classifier-training workflow:
 bash scripts/train_classifier_only.sh
 ```
 
-## Troubleshooting
+## Troubleshooting 🛠️
 
 - `scripts/predict_binder.sh` calls `runner/pedict_binder.py` (filename is `pedict_binder.py`).
 - For multi-GPU finetuning, use `scripts/finetune_classifier_DDP.sh` with the same classifier-loading flags.
