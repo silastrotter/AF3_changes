@@ -16,9 +16,9 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="protenix",
+    name="AF3_finetuning",
     version="1.0.0",
-    description="",
+    description="protenix based AF3 finetuning",
     packages=find_packages(
         exclude=(
             "assets",
@@ -28,6 +28,6 @@ setup(
     ),
     include_package_data=True,
     package_data={
-        "protenix": ["model/layer_norm/kernel/*"],
+        "AF3_finetuning": ["model/layer_norm/kernel/*"],
     },
 )
