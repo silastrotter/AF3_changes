@@ -1,20 +1,5 @@
 #!/bin/bash
 
-# Copyright 2024 ByteDance and/or its affiliates.
-#
-# Licensed under the Attribution-NonCommercial 4.0 International
-# License (the "License"); you may not use this file except in
-# compliance with the License. You may obtain a copy of the
-# License at
-
-#     https://creativecommons.org/licenses/by-nc/4.0/
-
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 # Example feature and label paths (replace with your actual .pt files)
 feat_paths=(
     "/home/fs01/wc648/protenix/output/feats_2K_screen_0.pt"
@@ -41,15 +26,15 @@ label_paths_str="${label_paths[@]}"
 
 ligand_length=8  # Set this to your actual ligand length
 
-python3 runner/train_confidence_classifier.py \
+python3 runner/train_MLP_classifier.py \
+    --run_name 03182026_MLP_classifier_2K_screen_Repeat \
     --feat_path $feat_paths_str \
     --label_path $label_paths_str \
     --ligand_length $ligand_length \
     --batch_size 1024 \
     --epochs 10000 \
     --lr 0.0005 \
-    --output ./output/confidence_classifier_2K_screen_test.pt \
+    --output ./output/03182026_MLP_classifier_2K_screen_Repeat.pt \
     --number_of_chains 2 \
     --patience 1000 \
-    --pretrained_model /home/fs01/wc648/protenix/output/confidence_classifier_2K_screen.pt \
-    # Add --use_intersted_atom_mask if needed
+

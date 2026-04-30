@@ -137,10 +137,35 @@ wandb/
 output/
 
 af3-dev/
-*.log
 hh-suite/
 cutlass/
 
+# Slurm / cluster logs (stdout/stderr from job arrays often have extra suffixes)
 *.sbatch
 *.err
-*.out 
+*.out
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*.swo
+*~
+
+# Linters / type / coverage extras
+.ruff_cache/
+htmlcov/
+coverage.xml
+*.prof
+
+# ML experiment artifacts
+lightning_logs/
+runs/
+events.out.tfevents.*
+tensorboard/
+
+# Local scratch / temp
+scratch/
+tmp/
+.temp/

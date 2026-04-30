@@ -1,234 +1,164 @@
-# Protenix: Protein + X
+# AF3 Finetuning Guide
 
-A trainable PyTorch reproduction of [AlphaFold 3](https://www.nature.com/articles/s41586-024-07487-w).
+This repo is set up for a simple 3-step workflow:
 
-For more information on the model's performance and capabilities, see our [technical report](Protenix_Technical_Report.pdf).
+1. Extract screening features with `scripts/predict_binder.sh`
+2. Train a confidence classifier with `scripts/train_confidence_classifier.sh`
+3. Finetune the full model with `scripts/finetune_classifier.sh`
 
-![Protenix predictions](assets/protenix_predictions.gif)
+Run all commands from the repository root.
 
-## ⚡ Try it online
-- [Web server link](http://101.126.11.40:8000/) 
+## Scripts layout
 
-## Installation and Preparations
+All runnable shell entrypoints are in `scripts/`:
 
-### Installing Protenix
+- `scripts/predict_binder.sh`: precompute screening features/labels from input tables.
+- `scripts/train_confidence_classifier.sh`: train the MLP confidence classifier from cached `.pt` features.
+- `scripts/train_classifier_only.sh`: train classifier directly in one workflow (without separate pre-caching step).
+- `scripts/finetune_classifier.sh`: single-GPU/full-model finetuning with classifier-related options.
+- `scripts/finetune_classifier_DDP.sh`: multi-GPU (`torchrun`) finetuning variant.
+- `scripts/inference_classifier.sh`: run inference with classifier-enabled settings.
+- `scripts/get_confidence_and_distance.sh`: compute confidence/distance outputs for analysis.
+- `scripts/eval_auc.sh`: evaluate model/classifier performance (AUC pipeline).
 
-Follow these steps to set up and run Protenix:
-  
-1. Install Docker (with GPU Support)
-Ensure that Docker is installed and configured with GPU support. Follow these steps:
-    -  Install [Docker](https://www.docker.com/) if not already installed.
-    *  Install the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) to enable GPU support.
-    *  Verify the setup with:
-        ```bash
-        docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi
-        ```
-        
-1. Pull the Docker image, which was built based on this [Dockerfile](Dockerfile)
-    ```bash
-    docker pull ai4s-cn-beijing.cr.volces.com/infra/protenix:v0.0.1
-    ```
+## Finetuning showcase: pre vs post structure
 
-1. Clone this repository and `cd` into it
-    ```bash
-    git clone https://github.com/bytedance/protenix.git 
-    cd ./protenix
-    pip install -e .
-    ```
+Example prediction pair for the same target (`NMT2GNEAALRS`):
 
-1. Run Docker with an interactive shell
-    ```bash
-    docker run --gpus all -it -v $(pwd):/workspace -v /dev/shm:/dev/shm ai4s-cn-beijing.cr.volces.com/infra/protenix:v0.0.1 /bin/bash
-    ```
-  
-  After running above commands, you’ll be inside the container’s environment and can execute commands as you would on a normal Linux terminal.
+- Post-finetune: `output/NMT2GNEAALRS_after_train/seed_101/predictions/NMT2GNEAALRS_after_train_sample_0.cif`
+- Pre-finetune: `output/NMT2GNEAALRS_pre_train/seed_101/predictions/NMT2GNEAALRS_pre_train_sample_0.cif`
 
-### Setting up kernels
+![Finetuning cartoon showcase (aligned, residues 107+, colored by chain number)](assets/finetune_showcase_cartoon.png)
 
-- **Custom CUDA layernorm kernels** modified from [FastFold](https://github.com/hpcaitech/FastFold) and [Oneflow](https://github.com/Oneflow-Inc/oneflow) accelerate about 30%-50% during different training stages. To use this feature, run the following command:
-  ```bash
-  export LAYERNORM_TYPE=fast_layernorm
-  ```
-  If the environment variable `LAYERNORM_TYPE` is set to `fast_layernorm`, the model will employ the layernorm we have developed; otherwise, the naive PyTorch layernorm will be adopted. The kernels will be compiled when `fast_layernorm` is called for the first time.
-- **[DeepSpeed DS4Sci_EvoformerAttention kernel](https://www.deepspeed.ai/tutorials/ds4sci_evoformerattention/)** is a memory-efficient attention kernel developed as part of a collaboration between OpenFold and the DeepSpeed4Science initiative. To use this feature, simply pass: 
-  ```bash
-  --use_deepspeed_evo_attention true
-  ```
-  into the command line. DS4Sci_EvoformerAttention is implemented based on [CUTLASS](https://github.com/NVIDIA/cutlass). You need to clone the CUTLASS repository and specify the path to it in the environment variable CUTLASS_PATH. The [Dockerfile](Dockerfile) has already include this setting:
-  ```bash
-  RUN git clone -b v3.5.1 https://github.com/NVIDIA/cutlass.git  /opt/cutlass
-  ENV CUTLASS_PATH=/opt/cutlass
-  ```
-  The kernels will be compiled when DS4Sci_EvoformerAttention is called for the first time.
+Detailed vector/PDF version of this figure: [`assets/before_after_finetune.pdf`](assets/before_after_finetune.pdf)
 
+You can open both files in PyMOL/ChimeraX and compare them directly.
 
-### Preparing the datasets
-To download the [wwPDB dataset](https://www.wwpdb.org/) and proprecessed training data, you need at least 1T disk space.
-
-Use the following command to download the preprocessed wwpdb training databases:
+Example with PyMOL:
 
 ```bash
-wget -P /af3-dev/release_data/ https://af3-dev.tos-cn-beijing.volces.com/release_data.tar.gz
-tar -xzvf /af3-dev/release_data/release_data.tar.gz -C /af3-dev/release_data/
-rm /af3-dev/release_data/release_data.tar.gz
+pymol \
+  output/NMT2GNEAALRS_pre_train/seed_101/predictions/NMT2GNEAALRS_pre_train_sample_0.cif \
+  output/NMT2GNEAALRS_after_train/seed_101/predictions/NMT2GNEAALRS_after_train_sample_0.cif
 ```
 
+Then in the PyMOL console:
 
-The data should be placed in the `/af3-dev/release_data/` directory. You can also download it to a different directory, but remember to modify the `DATA_ROOT_DIR` in [configs/configs_data.py](configs/configs_data.py) correspondingly.  Data hierarchy after extraction is as follows:
-
-  ```bash
-  ├── components.v20240608.cif [408M] # ccd source file
-  ├── components.v20240608.cif.rdkit_mol.pkl [121M] # rdkit Mol object generated by ccd source file
-  ├── indices [33M] # chain or interface entries
-  ├── mmcif [283G]  # raw mmcif data
-  ├── mmcif_bioassembly [36G] # preprocessed wwPDB structural data
-  ├── mmcif_msa [450G] # msa files
-  ├── posebusters_bioassembly [42M] # preprocessed posebusters structural data
-  ├── posebusters_mmcif [361M] # raw mmcif data
-  ├── recentPDB_bioassembly [1.5G] # preprocessed recentPDB structural data
-  └── seq_to_pdb_index.json [45M] # sequence to pdb id mapping file
-  ```
-With the above data, you can run the training demo from scratch. `components.v20240608.cif` and `components.v20240608.cif.rdkit_mol.pkl` is also used in inference pipeline for generating [ccd](https://www.wwpdb.org/data/ccd) reference feature. If you only want to run inference, the full released data is not necessary, you can download these two files separately.
-```bash
-wget -P /af3-dev/release_data/ https://af3-dev.tos-cn-beijing.volces.com/release_data/components.v20240608.cif
-wget -P /af3-dev/release_data/ https://af3-dev.tos-cn-beijing.volces.com/release_data/components.v20240608.cif.rdkit_mol.pkl
+```text
+align NMT2GNEAALRS_after_train_sample_0, NMT2GNEAALRS_pre_train_sample_0
 ```
-Data processing scripts are still being organized and prepared, and distillation data will be released in the future.
 
-## Running your first prediction
+This side-by-side cartoon view removes residues `1-106`, aligns post-finetune to pre-finetune, and colors each chain consistently by chain number.
 
-### Model checkpoints
+## AF3 finetuning model architecture
 
-Use the following command to download pretrained checkpoint [1.4G]:
+Architecture figure (PDF): [`assets/AF3_finetune_model_architecture.pdf`](assets/AF3_finetune_model_architecture.pdf)
+
+## 0) Environment setup
 
 ```bash
-wget -P /af3-dev/release_model/ https://af3-dev.tos-cn-beijing.volces.com/release_model/model_v1.pt 
-
+conda env create -f environment.yml
+conda activate protenix
+pip install -e .
 ```
-the checkpoint should be placed in the `/af3-dev/release_model/` directory.
 
-### Notebook demo
-You can use [notebooks/protenix_inference.ipynb](notebooks/protenix_inference.ipynb)  to run the model inference.
-
-### Inference demo
-You can run the script `inference_demo.sh` to do model inference:
+Optional but recommended:
 
 ```bash
-bash inference_demo.sh
+export LAYERNORM_TYPE=fast_layernorm
 ```
 
-Arguments in this scripts are explained as follows:
-* `load_checkpoint_path`: path to the model checkpoints.
-* `input_json_path`: path to a JSON file that fully describes the input.
-* `dump_dir`: path to a directory where the results of the inference will be saved. 
-* `dtype`: data type used in inference. Valid options include `"bf16"` and `"fp32"`. 
-* `use_deepspeed_evo_attention`: whether use the EvoformerAttention provided by DeepSpeed.
-* `use_msa`: whether to use the MSA feature, the default is true. If you want to disable the MSA feature, add `--use_msa false` to the [inference_demo.sh](inference_demo.sh) script.
+## 1) Extract features (`scripts/predict_binder.sh`)
 
-**Detailed information on the format of the input JSON file and the output files can be found [here](runner/infer_json_format.md)**.
+Before running, edit `scripts/predict_binder.sh`:
 
-Predicted structures for the posebusters set are available at:  
+- `checkpoint_path`: path to your base AF3/Protenix checkpoint
+- `dump_dir`: output directory for generated tensors/results
+- `input_json_paths`: your CSV/JSON input files
+
+Run:
+
 ```bash
-https://af3-dev.tos-cn-beijing.volces.com/pb_samples_release.tar.gz
+# default shard (index 0)
+bash scripts/predict_binder.sh
+
+# specific shard index (for array jobs)
+bash scripts/predict_binder.sh 3
 ```
 
-## Training and Finetuning
-### Training demo
-After the installation and data preparations, you can run the following command to train the model from scratch:
+Use these outputs to prepare the feature/label tensors consumed in Step 2.
 
-  ```bash
-  bash train_demo.sh 
-  ```
-Key arguments in this scripts are explained as follows:
-* `dtype`: data type used in training. Valid options include `"bf16"` and `"fp32"`. 
-  * `--dtype fp32`: the model will be trained in full FP32 precision.
-  * `--dtype bf16`: the model will be trained in BF16 Mixed precision, by default, the `SampleDiffusion`,`ConfidenceHead`, `Mini-rollout` and `Loss` part will still be training in FP32 precision. if you want to train and infer the model in full BF16 Mixed precision, pass the following arguments to the [train_demo.sh](train_demo.sh):
-    ```bash
-    --skip_amp.sample_diffusion_training false \
-    --skip_amp.confidence_head false \
-    --skip_amp.sample_diffusion false \
-    --skip_amp.loss false \
-    ```
-* `use_deepspeed_evo_attention`: whether use the EvoformerAttention provided by DeepSpeed as mentioned above.
-* `ema_decay`: the decay rate of the EMA, default is 0.999.
-* `sample_diffusion.N_step`: during evalutaion, the number of steps for the diffusion process is reduced to 20 to improve efficiency.
-* `data.train_sets/data.test_sets`: the datasets used for training and evaluation. If there are multiple datasets, separate them with commas.
+## 2) Train classifier (`scripts/train_confidence_classifier.sh`)
 
-* Some settings follow those in the [AlphaFold 3](https://www.nature.com/articles/s41586-024-07487-w) paper, The table below shows the training settings for different fine-tuning stages:
+You have two ways to train the classifier:
 
-  | Arguments  | Initial training | Fine tuning 1   |  Fine tuning 2  | Fine tuning 3 |
-  |-----------------------------------------|--------|---------|-------|-----|
-  | `train_crop_size`                       | 384    | 640    | 768    | 768 |
-  | `diffusion_batch_size`                  | 48     | 32     | 32     | 32  |
-  | `loss.weight.alpha_pae`                 | 0      | 0      | 0      | 1.0 |
-  | `loss.weight.alpha_bond`                | 0      | 1.0    | 1.0    | 0   | 
-  | `loss.weight.smooth_lddt`               | 1.0    | 0      | 0      | 0   | 
-  | `loss.weight.alpha_confidence`          | 1e-4   | 1e-4   | 1e-4   | 1e-4|
-  | `loss.weight.alpha_diffusion`           | 4.0    | 4.0    | 4.0    | 0   |
-  | `loss.weight.alpha_distogram`           | 0.03   | 0.03   | 0.03   | 0   |
-  | `train_confidence_only`                 | False  | False  | False  | True|
-  | full BF16-mixed speed(A100, s/step)     | ~12    | ~30    | ~44    | ~13 |
-  | full BF16-mixed peak memory (G)         | ~34    | ~35    | ~48    | ~24 |
-  
-  We recommend carrying out the training on A100-80G or H20/H100 GPUs. If utilizing full BF16-Mixed precision training, the initial training stage can also be performed on A800-40G GPUs. GPUs with smaller memory, such as A30, you'll need to reduce the model size, such as decreasing `model.pairformer.nblocks` and `diffusion_batch_size`.
-* In this version, we do not use the template and RNA MSA feature for training. As the default settings in [configs/configs_base.py](configs/configs_base.py) and [configs/configs_data.py](configs/configs_data.py):
-  ```bash
-  --model.template_embedder.n_blocks 0 \
-  --data.msa.enable_rna_msa false \
-  ```
-  This will be considered in our future work.
+- **Pre-cached features workflow (recommended for repeated experiments):**
+  run `scripts/predict_binder.sh` first to generate features, then train with `scripts/train_confidence_classifier.sh`.
+- **Direct workflow:**
+  train the classifier directly with `scripts/train_classifier_only.sh`.
 
-* The model also supports distributed training with PyTorch’s [`torchrun`](https://pytorch.org/docs/stable/elastic/run.html). For example, if you’re running distributed training on a single node with 4 GPUs, you can use:
-  ```bash
-  torchrun --nproc_per_node=4 runner/train.py
-  ```
-  You can also pass other arguments with `--<ARGS_KEY> <ARGS_VALUE>` as you want.
+Before running, edit `scripts/train_confidence_classifier.sh`:
 
+- `feat_paths`: list of feature `.pt` files from Step 1
+- `label_paths`: matching label `.pt` files
+- `ligand_length` and training hyperparameters
+- `--output`: destination for saved classifier weights
 
-### Finetune demo
+Run:
 
-If you want to fine-tune the model on a specific subset, such as an antibody dataset, you only need to provide a PDB list file and load the pretrained weights as [finetune_demo.sh](finetune_demo.sh) shows:
-    
 ```bash
-checkpoint_path="/af3-dev/release_model/model_v1.pt"
-...
-
---load_checkpoint_path ${checkpoint_path} \
---load_checkpoint_ema_path ${checkpoint_path} \
---data.weightedPDB_before2109_wopb_nometalc_0925.base_info.pdb_list examples/subset.txt \
+bash scripts/train_confidence_classifier.sh
 ```
 
-, where the `subset.txt` is a file containing the PDB IDs like:
+Keep the final classifier checkpoint path from `--output`. You will load this in Step 3.
+
+Alternatively, for direct classifier training without separately pre-caching features:
+
 ```bash
-6hvq
-5mqc
-5zin
-3ew0
-5akv
+bash scripts/train_classifier_only.sh
 ```
 
-## Acknowledgements
+## 3) Finetune full model (`scripts/finetune_classifier.sh`)
 
-Implementation of the layernorm operators referred to [OneFlow](https://github.com/Oneflow-Inc/oneflow) and [FastFold](https://github.com/hpcaitech/FastFold). We used [OpenFold](https://github.com/aqlaboratory/openfold) for some [module](protenix/openfold_local/) implementations, except the [`LayerNorm`](protenix/model/layer_norm/).
+Before running, edit `scripts/finetune_classifier.sh`:
 
+- `checkpoint_path`: base checkpoint to finetune from
+- `--load_checkpoint_path ${checkpoint_path}`
+- `--load_ema_checkpoint_path ${checkpoint_path}`
+- `--load_classifier_checkpoint true`
+- `--load_checkpoint_path_classifier /path/to/classifier_from_step2.pt`
+- any training knobs you want (`--run_name`, `--max_steps`, `--lr`, dataset args, etc.)
 
-## Contribution
+Run:
 
-Please check [Contributing](CONTRIBUTING.md) for more details.
+```bash
+bash scripts/finetune_classifier.sh
+```
 
-## Code of Conduct
+## End-to-end commands
 
-Please check [Code of Conduct](CODE_OF_CONDUCT.md) for more details.
+Pre-cached features workflow:
 
-## Security
+```bash
+# 1) feature extraction
+bash scripts/predict_binder.sh
 
-If you discover a potential security issue in this project, or think you may
-have discovered a security issue, we ask that you notify Bytedance Security via our [security center](https://security.bytedance.com/src) or [vulnerability reporting email](sec@bytedance.com).
+# 2) classifier training
+bash scripts/train_confidence_classifier.sh
 
-Please do **not** create a public GitHub issue.
+# 3) full-model finetuning
+bash scripts/finetune_classifier.sh
+```
 
-## License
+Direct classifier-training workflow:
 
-This project, including code and model parameters are made available under the terms of the Creative Commons Attribution-NonCommercial 4.0 International License. You can find details at: https://creativecommons.org/licenses/by-nc/4.0/
+```bash
+# train classifier directly
+bash scripts/train_classifier_only.sh
+```
 
-For commercial use, please reach out to us at ai4s-bio@bytedance.com for the commercial license. We welcome all types of collaborations.
+## Troubleshooting
+
+- `scripts/predict_binder.sh` calls `runner/pedict_binder.py` (filename is `pedict_binder.py`).
+- For multi-GPU finetuning, use `scripts/finetune_classifier_DDP.sh` with the same classifier-loading flags.
+- If Step 2 fails on missing files, verify `feat_paths` and `label_paths` are paired and valid.
