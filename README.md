@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # AF3 Finetuning Guide
 
 This repo is set up for a simple 3-step workflow:
@@ -29,9 +28,9 @@ Example prediction pair for the same target (`NMT2GNEAALRS`):
 - Post-finetune: `output/NMT2GNEAALRS_after_train/seed_101/predictions/NMT2GNEAALRS_after_train_sample_0.cif`
 - Pre-finetune: `output/NMT2GNEAALRS_pre_train/seed_101/predictions/NMT2GNEAALRS_pre_train_sample_0.cif`
 
-![Finetuning cartoon showcase (aligned, residues 107+, colored by chain number)](assets/finetune_showcase_cartoon.png)
-
-Detailed vector/PDF version of this figure: [`assets/before_after_finetune.pdf`](assets/before_after_finetune.pdf)
+<object data="assets/before_after_finetune.pdf" type="application/pdf" width="100%" height="780">
+  <a href="assets/before_after_finetune.pdf">View before/after finetuning figure (PDF)</a>
+</object>
 
 You can open both files in PyMOL/ChimeraX and compare them directly.
 
@@ -49,11 +48,13 @@ Then in the PyMOL console:
 align NMT2GNEAALRS_after_train_sample_0, NMT2GNEAALRS_pre_train_sample_0
 ```
 
-This side-by-side cartoon view removes residues `1-106`, aligns post-finetune to pre-finetune, and colors each chain consistently by chain number.
+This side-by-side view removes residues `1-106`, aligns post-finetune to pre-finetune, and colors each chain consistently by chain number.
 
 ## AF3 finetuning model architecture
 
-Architecture figure (PDF): [`assets/AF3_finetune_model_architecture.pdf`](assets/AF3_finetune_model_architecture.pdf)
+<object data="assets/AF3_finetune_model_architecture.pdf" type="application/pdf" width="100%" height="780">
+  <a href="assets/AF3_finetune_model_architecture.pdf">View AF3 finetuning model architecture (PDF)</a>
+</object>
 
 ## 0) Environment setup
 
@@ -163,36 +164,3 @@ bash scripts/train_classifier_only.sh
 - `scripts/predict_binder.sh` calls `runner/pedict_binder.py` (filename is `pedict_binder.py`).
 - For multi-GPU finetuning, use `scripts/finetune_classifier_DDP.sh` with the same classifier-loading flags.
 - If Step 2 fails on missing files, verify `feat_paths` and `label_paths` are paired and valid.
-=======
-# AF3 Finetune
-
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.1+-ee4c2c.svg)](https://pytorch.org/)
-
-This repository provides an optimized pipeline for fine-tuning AlphaFold 3 (AF3) architectures on custom biomolecular datasets. Built upon ByteDance's open-source [Protenix](https://github.com/bytedance/Protenix) implementation, this standalone toolkit is designed to adapt AF3 for specialized structural biology tasks, such as predicting enzyme-substrate interactions, modeling non-canonical protein recognition, and exploring specific protein-ligand interfaces.
-
-## 🌟 Key Features
-- **Diffusion-based Finetuning:** Leverage the AF3 diffusion module to refine complex structure predictions.
-- **Custom Data Pipelines:** Streamlined scripts to process mmCIF/PDB files and MSAs for custom training regimens.
-- **All-Atom Support:** Handles proteins, DNA, RNA, and small molecules (ligands).
-- **Optimized Configurations:** Pre-set YAML configs tailored for low-learning-rate finetuning and confidence score extraction.
-
----
-
-## ⚙️ Installation
-
-To get started, clone the repository and set up the environment:
-
-```bash
-# Clone the repository
-git clone [https://github.com/wenzhe-chen/AF3_finetune.git](https://github.com/wenzhe-chen/AF3_finetune.git)
-cd AF3_finetune
-
-# Create environment (Mamba/Conda recommended)
-conda create -n protenix python=3.10 -y
-conda activate protenix
-
-# Install dependencies
-pip install -r requirements.txt
->>>>>>> origin/AF3_finetune
