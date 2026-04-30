@@ -8,6 +8,12 @@ This repo is set up for a simple 3-step workflow:
 
 Run all commands from the repository root.
 
+## AF3 finetuning model architecture 🏗️
+
+![AF3 finetuning model architecture](assets/AF3_finetune_model_architecture.jpg)
+
+Full-resolution PDF: [`assets/AF3_finetune_model_architecture.pdf`](assets/AF3_finetune_model_architecture.pdf)
+
 ## Scripts layout 🗂️
 
 All runnable shell entrypoints are in `scripts/`:
@@ -28,7 +34,7 @@ Example prediction pair for the same target (`NMT2GNEAALRS`):
 - Post-finetune: `output/NMT2GNEAALRS_after_train/seed_101/predictions/NMT2GNEAALRS_after_train_sample_0.cif`
 - Pre-finetune: `output/NMT2GNEAALRS_pre_train/seed_101/predictions/NMT2GNEAALRS_pre_train_sample_0.cif`
 
-![Before/after finetuning figure](assets/before_after_finetune_preview.jpg)
+![Before/after finetuning figure](assets/before_after_finetune.jpg)
 
 Full-resolution PDF: [`assets/before_after_finetune.pdf`](assets/before_after_finetune.pdf)
 
@@ -49,12 +55,6 @@ align NMT2GNEAALRS_after_train_sample_0, NMT2GNEAALRS_pre_train_sample_0
 ```
 
 This side-by-side view removes residues `1-106`, aligns post-finetune to pre-finetune, and colors each chain consistently by chain number.
-
-## AF3 finetuning model architecture 🏗️
-
-![AF3 finetuning model architecture](assets/AF3_finetune_model_architecture_preview.jpg)
-
-Full-resolution PDF: [`assets/AF3_finetune_model_architecture.pdf`](assets/AF3_finetune_model_architecture.pdf)
 
 ## 0) Environment setup ⚙️
 
