@@ -405,10 +405,9 @@ class Protenix(nn.Module):
 
         if self.configs['classifier']:
             all_pred_dict['binder']=_cat(pred_dicts, "binder")
-            if self.configs.train_classifier_by_inference:
-                all_pred_dict['classifier_feats'] = _cat(pred_dicts, "classifier_feats")
-        
+
         if self.configs.train_classifier_by_inference:
+            all_pred_dict['classifier_feats'] = _cat(pred_dicts, "classifier_feats")
             all_pred_dict['confidence_features_a'] = _cat(pred_dicts, "confidence_features_a")
             all_pred_dict['confidence_features_z_pair'] = _cat(pred_dicts, "confidence_features_z_pair")
 
@@ -607,17 +606,21 @@ class Protenix(nn.Module):
         #print('summary_confidence:',pred_dict["summary_confidence"])
         #    'full_data_shape:',pred_dict["full_data"])
 
-        if self.configs['classifier']:
-
-            confidence_scores = self.get_classifier_input(pred_dict["summary_confidence"], pred_dict["full_data"], self.configs.model.confidence_classifier.ligand_length)
-            print('confidence_scores_shape:',confidence_scores.shape)
-
+        confidence_scores = None
+        if self.configs.train_classifier_by_inference or self.configs['classifier']:
+            confidence_scores = self.get_classifier_input(
+                pred_dict["summary_confidence"],
+                pred_dict["full_data"],
+                self.configs.model.confidence_classifier.ligand_length,
+            )
             if self.configs.train_classifier_by_inference:
+                # print('confidence_scores_shape:', confidence_scores.shape)
                 pred_dict['classifier_feats'] = confidence_scores
 
+        if self.configs['classifier']:
             # Forward pass on GPU
             confidence_output = self.run_confidence_classifier(confidence_scores)
-            print('confidence_output:',torch.softmax(confidence_output, dim=1)[:, 1])
+            # print('confidence_output:',torch.softmax(confidence_output, dim=1)[:, 1])
 
             # Store confidence-based classification output
             pred_dict['binder'] = confidence_output
@@ -799,9 +802,9 @@ class Protenix(nn.Module):
                         atom_array=atom_array, lig_label_asym_id="B"
                     )
                     interested_atom_mask = interested_ligand_mask
-                    print('using interested_atom_mask',interested_atom_mask)
+                    # print('using interested_atom_mask',interested_atom_mask)
                 else:
-                    print('atom_array is Missing')
+                    # print('atom_array is Missing')
                     interested_atom_mask = None
 
             summary_confidence, full_data = sample_confidence.compute_full_data_and_summary(
@@ -825,7 +828,7 @@ class Protenix(nn.Module):
                 )
             #print('summary_confidence.grad_fn',summary_confidence.grad_fn)
             #print('full_data.grad_fn',full_data.grad_fn)
-            print('summary_confidence:',summary_confidence)
+            # print('summary_confidence:',summary_confidence)
             #print('full_data:',full_data[0].keys())
 
             confidence_scores = self.get_classifier_input(summary_confidence, full_data, self.configs.model.confidence_classifier.ligand_length)
@@ -838,7 +841,7 @@ class Protenix(nn.Module):
             #     random_tensor2 = torch.randn(1, 24106, generator=gen2).to(confidence_scores.device)
             #     confidence_scores = random_tensor2
 
-            print('confidence_scores_shape:',confidence_scores.shape)
+            # print('confidence_scores_shape:',confidence_scores.shape)
 
             # Forward pass on GPU
             confidence_output = self.run_confidence_classifier(confidence_scores)
@@ -938,10 +941,13 @@ class Protenix(nn.Module):
                 atom_array=atom_array,
             )
         elif mode == "inference":
+            n_cycle_eval = int(self.configs.model.get("N_cycle_eval", -1))
+            if n_cycle_eval <= 0:
+                n_cycle_eval = self.N_cycle
             pred_dict, log_dict, time_tracker = self.main_inference_loop(
                 input_feature_dict=input_feature_dict,
                 label_dict=None,
-                N_cycle=self.N_cycle,
+                N_cycle=n_cycle_eval,
                 mode=mode,
                 inplace_safe=inplace_safe,
                 chunk_size=chunk_size,
@@ -959,10 +965,14 @@ class Protenix(nn.Module):
                     )
                     label_dict.update(label_full_dict)
 
+            # Align with feature extraction / inference settings when N_cycle_eval is set
+            n_cycle_eval = int(self.configs.model.get("N_cycle_eval", -1))
+            if n_cycle_eval <= 0:
+                n_cycle_eval = self.N_cycle
             pred_dict, log_dict, time_tracker = self.main_inference_loop(
                 input_feature_dict=input_feature_dict,
                 label_dict=label_dict,
-                N_cycle=self.N_cycle,
+                N_cycle=n_cycle_eval,
                 mode=mode,
                 inplace_safe=inplace_safe,
                 chunk_size=chunk_size,

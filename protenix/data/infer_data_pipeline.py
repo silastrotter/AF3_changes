@@ -161,33 +161,22 @@ class InferenceDataset(Dataset):
             sequence_list = indices_list.iloc[idx]["sequences"].split(":")
             sequences = []
             for j in range(len(sequence_list)):
-                chain_dict = {}
-                if len(sequence_list[j]) > 50:
-                    chain_dict["proteinChain"] = {
+                chain_dict = {
+                    "proteinChain": {
                         "sequence": sequence_list[j],
                         "count": 1,
                         "msa": {
-                            "precomputed_msa_dir": os.path.join(self.precomputed_msa_dir, "1"),
+                            "precomputed_msa_dir": os.path.join(
+                                self.precomputed_msa_dir, str(j + 1)
+                            ),
                             "search_tool": self.msa_search_tool,
                             "pairing_db": self.msa_pairing_db,
                             "pairing_db_fpath": self.msa_pairing_db_fpath,
                             "non_pairing_db_fpath": self.msa_non_pairing_db_fpath,
-                            "msa_save_dir": self.msa_save_dir
-                        }
+                            "msa_save_dir": self.msa_save_dir,
+                        },
                     }
-                else:
-                    chain_dict["proteinChain"] = {
-                        "sequence": sequence_list[j],
-                        "count": 1,
-                        "msa": {
-                            "precomputed_msa_dir": os.path.join(self.precomputed_msa_dir, "2"),
-                            "search_tool": self.msa_search_tool,
-                            "pairing_db": self.msa_pairing_db,
-                            "pairing_db_fpath": self.msa_pairing_db_fpath,
-                            "non_pairing_db_fpath": self.msa_non_pairing_db_fpath,
-                            "msa_save_dir": self.msa_save_dir
-                        }
-                    }
+                }
                 sequences.append(chain_dict)
             input["sequences"] = sequences
 

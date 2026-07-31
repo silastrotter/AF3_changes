@@ -31,6 +31,7 @@ def parse_args():
     parser.add_argument('--feat_path', type=str, required=True, nargs='+', help='Path(s) to features .pt file(s)')
     parser.add_argument('--label_path', type=str, required=True, nargs='+', help='Path(s) to labels .pt file(s)')
     parser.add_argument('--ligand_length', type=int, required=True, help='Ligand length for classifier input dim')
+    parser.add_argument('--n_token', type=int, default=506, help='Total token count (receptor + ligand) for classifier input dim')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     parser.add_argument('--epochs', type=int, default=20, help='Number of epochs')
     parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate')
@@ -87,6 +88,7 @@ def main():
     # Model
     model = ConfidenceClassifier(
         ligand_length=args.ligand_length,
+        n_token=args.n_token,
         hidden_units=1024,
         output_units=len(torch.unique(labels)) if labels.ndim == 1 else labels.shape[1],
         number_of_chains=args.number_of_chains,

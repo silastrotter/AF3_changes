@@ -158,6 +158,10 @@ model_configs = {
     "model": {
         "N_model_seed": 1,  # for inference
         "N_cycle": 4,
+        # If >0, used for eval/inference recycling; keeps train N_cycle independent.
+        # Match get_classifier_feats (often 10) when evaluating a frozen MLP classifier.
+        # -1 means "use model.N_cycle".
+        "N_cycle_eval": -1,
         "input_embedder": {
             "c_atom": GlobalConfigValue("c_atom"),
             "c_atompair": GlobalConfigValue("c_atompair"),
@@ -252,6 +256,7 @@ model_configs = {
             'output_units': 2, # 0: non-binder, 1: binder one-hot-label
             'number_of_chains': 2,  
             'ligand_length': 8, # token length
+            'n_token': 506,  # total token count (receptor + ligand)
         }
     },
 }

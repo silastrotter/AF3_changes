@@ -229,8 +229,8 @@ class ConfidenceHead(nn.Module):
             )
             a_list.append(a)
             z_pair_list.append(z_pair)
-        print('a_list',a_list[0].shape)
-        print('z_pair_list',z_pair_list[0].shape)
+        # print('a_list',a_list[0].shape)
+        # print('z_pair_list',z_pair_list[0].shape)
         a = torch.stack(a_list, dim=0)  # [N_sample, N_atom, c_s]
         z_pair = torch.stack(z_pair_list, dim=0)  # [N_sample, N_tokens, N_tokens, c_z]
         return a, z_pair

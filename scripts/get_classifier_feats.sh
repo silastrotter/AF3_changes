@@ -28,7 +28,7 @@ input_json_path="${input_json_paths[$TASK_ID]}"
 load_checkpoint_path="/home/fs01/wc648/protenix/af3-dev/release_model/model_v1.pt"
 dump_dir="./output"
 
-python3 runner/train_classifier.py \
+python3 /home/fs01/wc648/protenix/runner/get_classifier_feats.py \
 --seeds ${seed} \
 --load_checkpoint_path ${load_checkpoint_path} \
 --dump_dir ${dump_dir} \
@@ -38,4 +38,6 @@ python3 runner/train_classifier.py \
 --sample_diffusion.N_sample ${N_sample} \
 --sample_diffusion.N_step ${N_step} \
 --train_classifier_by_inference true \
+--model.confidence_classifier.ligand_length 9 \
+--model.confidence_classifier.number_of_chains 3 \
 --data.train_sets classifier_table \

@@ -2,13 +2,25 @@ import torch
 import torch.nn as nn
 
 class ConfidenceClassifier(nn.Module):
-    def __init__(self, ligand_length, hidden_units=1024, output_units=1, number_of_chains=2, use_intersted_atom_mask=False ):
+    def __init__(
+        self,
+        ligand_length,
+        n_token=506,
+        hidden_units=1024,
+        output_units=1,
+        number_of_chains=2,
+        use_intersted_atom_mask=False,
+    ):
         super(ConfidenceClassifier, self).__init__()
         self.number_of_chains = number_of_chains
+        self.n_token = n_token
+        pair_feat_dim = (
+            ligand_length * n_token + ligand_length * (n_token - ligand_length)
+        ) * 3
         if use_intersted_atom_mask:
-            self.input_dim = (ligand_length* 506 + ligand_length* (506-ligand_length))*3 + 4 + self.number_of_chains * 3 + 1
+            self.input_dim = pair_feat_dim + 4 + self.number_of_chains * 3 + 1
         else:
-            self.input_dim = (ligand_length* 506 + ligand_length* (506-ligand_length))*3 + 4 + self.number_of_chains * 3
+            self.input_dim = pair_feat_dim + 4 + self.number_of_chains * 3
         self.hidden_units = hidden_units
         self.output_units = output_units
 

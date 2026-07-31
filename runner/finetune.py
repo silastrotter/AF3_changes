@@ -156,7 +156,7 @@ class AF3Trainer(object):
             if labels.shape[0] != logits.shape[0]:
                 labels = labels.repeat(logits.shape[0])
 
-        print('logits',logits,"labels",labels)
+        # print('logits',logits,"labels",labels)
         loss_fn = torch.nn.CrossEntropyLoss()   
         #loss_fn = torch.nn.BCEWithLogitsLoss()
         loss = loss_fn(logits, labels)
@@ -444,16 +444,22 @@ class AF3Trainer(object):
                     # Model forward
                     batch, _ = self.model_forward(batch, mode=mode)
                     # Loss forward
-                    loss, loss_dict,batch = self.get_loss(batch, mode="eval")
-                    if not self.configs['classifier']:
-                    # lDDT metrics
+                    loss, loss_dict, batch = self.get_loss(batch, mode="eval")
+                    if self.configs["classifier"]:
+                        # Record classifier loss/accuracy (lDDT is not used in this mode)
+                        simple_metrics.update(
+                            {
+                                k: v.detach() if torch.is_tensor(v) else v
+                                for k, v in loss_dict.items()
+                            }
+                        )
+                    else:
+                        # lDDT metrics
                         lddt_dict = self.get_metrics(batch)
                         lddt_metrics = self.aggregate_metrics(lddt_dict, batch)
                         simple_metrics.update(
                             {k: v for k, v in lddt_metrics.items() if "diff" not in k}
                         )
-                    
-                    
 
                 # Metrics
                 for key, value in simple_metrics.items():
