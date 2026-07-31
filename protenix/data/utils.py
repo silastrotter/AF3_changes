@@ -39,6 +39,68 @@ def remove_numbers(s: str) -> str:
     return re.sub(r"\d+", "", s)
 
 
+def parse_csv_modifications(mod_str: str) -> dict[int, list[dict]]:
+    """
+    Parse an optional CSV ``modifications`` column into per-chain PTMs.
+
+    Format (semicolon-separated entries)::
+
+        <chain>:<position>:<ptmType>[;<chain>:<position>:<ptmType>...]
+
+    - ``chain``: 1-based index into the colon-separated ``sequences`` field
+    - ``position``: 1-based residue position within that chain
+    - ``ptmType``: CCD code, with or without a ``CCD_`` prefix (e.g. ``ALY`` or
+      ``CCD_ALY`` for Nε-acetyllysine)
+
+    Example: ``3:7:CCD_ALY`` acetylates residue 7 on the 3rd chain (ligand).
+
+    Returns:
+        Mapping from 0-based chain index to a list of
+        ``{"ptmType": "CCD_...", "ptmPosition": int}`` dicts.
+    """
+    mods_by_chain: dict[int, list[dict]] = defaultdict(list)
+    if mod_str is None:
+        return mods_by_chain
+    mod_str = str(mod_str).strip()
+    if not mod_str:
+        return mods_by_chain
+
+    for entry in mod_str.split(";"):
+        entry = entry.strip()
+        if not entry:
+            continue
+        parts = entry.split(":")
+        if len(parts) != 3:
+            raise ValueError(
+                f"Invalid modifications entry '{entry}'. "
+                "Expected format: chain:position:ptmType "
+                "(e.g. '3:7:CCD_ALY'), semicolon-separated for multiple."
+            )
+        chain_1based, position, ptm_type = (p.strip() for p in parts)
+        try:
+            chain_idx = int(chain_1based) - 1
+            ptm_position = int(position)
+        except ValueError as e:
+            raise ValueError(
+                f"Invalid modifications entry '{entry}': "
+                "chain and position must be integers."
+            ) from e
+        if chain_idx < 0:
+            raise ValueError(
+                f"Invalid modifications entry '{entry}': chain must be >= 1."
+            )
+        if ptm_position < 1:
+            raise ValueError(
+                f"Invalid modifications entry '{entry}': position must be >= 1."
+            )
+        if not ptm_type.startswith("CCD_"):
+            ptm_type = f"CCD_{ptm_type}"
+        mods_by_chain[chain_idx].append(
+            {"ptmType": ptm_type, "ptmPosition": ptm_position}
+        )
+    return mods_by_chain
+
+
 def get_starts_by(
     atom_array: AtomArray, by_annot: str, add_exclusive_stop=False
 ) -> np.ndarray:

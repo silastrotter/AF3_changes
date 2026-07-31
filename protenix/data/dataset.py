@@ -34,7 +34,11 @@ from protenix.data.data_pipeline import DataPipeline
 from protenix.data.featurizer import Featurizer
 from protenix.data.msa_featurizer import MSAFeaturizer
 from protenix.data.tokenizer import TokenArray
-from protenix.data.utils import data_type_transform, make_dummy_feature
+from protenix.data.utils import (
+    data_type_transform,
+    make_dummy_feature,
+    parse_csv_modifications,
+)
 from protenix.utils.cropping import CropData
 from protenix.utils.file_io import read_indices_csv
 from protenix.utils.logger import get_logger
@@ -881,6 +885,10 @@ class SequenceClassificationDataset(Dataset):
             input["assembly_id"] = "1"
             input["label"] = indices_list.iloc[idx]["label"]
             sequence_list = indices_list.iloc[idx]["sequences"].split(":")
+            row = indices_list.iloc[idx]
+            mods_by_chain = parse_csv_modifications(
+                row["modifications"] if "modifications" in row.index else ""
+            )
             sequences = []
             for j in range(len(sequence_list)):
                 chain_dict = {
@@ -899,7 +907,16 @@ class SequenceClassificationDataset(Dataset):
                         },
                     }
                 }
+                if j in mods_by_chain:
+                    chain_dict["proteinChain"]["modifications"] = mods_by_chain[j]
                 sequences.append(chain_dict)
+            for chain_idx in mods_by_chain:
+                if chain_idx >= len(sequence_list):
+                    raise ValueError(
+                        f"Sample '{input['name']}': modifications refer to chain "
+                        f"{chain_idx + 1}, but only {len(sequence_list)} chains "
+                        f"are present in sequences."
+                    )
             input["sequences"] = sequences
 
             inputs.append(input)

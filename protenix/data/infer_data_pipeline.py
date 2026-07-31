@@ -33,7 +33,11 @@ import pandas as pd
 from protenix.data.data_pipeline import DataPipeline
 from protenix.data.json_to_feature import SampleDictToFeatures
 from protenix.data.msa_featurizer import InferenceMSAFeaturizer
-from protenix.data.utils import data_type_transform, make_dummy_feature
+from protenix.data.utils import (
+    data_type_transform,
+    make_dummy_feature,
+    parse_csv_modifications,
+)
 from protenix.utils.distributed import DIST_WRAPPER
 from protenix.utils.torch_utils import dict_to_tensor
 from protenix.data.dataset import SequenceClassificationDataset
@@ -158,7 +162,11 @@ class InferenceDataset(Dataset):
             input["model_seed"] = []
             input["assembly_id"] = "1"
             input["label"] = indices_list.iloc[idx]["label"]
-            sequence_list = indices_list.iloc[idx]["sequences"].split(":")
+            sequence_list = indices_list.iloc[idx]["sequence"].split(":")
+            row = indices_list.iloc[idx]
+            mods_by_chain = parse_csv_modifications(
+                row["modifications"] if "modifications" in row.index else ""
+            )
             sequences = []
             for j in range(len(sequence_list)):
                 chain_dict = {
@@ -177,7 +185,16 @@ class InferenceDataset(Dataset):
                         },
                     }
                 }
+                if j in mods_by_chain:
+                    chain_dict["proteinChain"]["modifications"] = mods_by_chain[j]
                 sequences.append(chain_dict)
+            for chain_idx in mods_by_chain:
+                if chain_idx >= len(sequence_list):
+                    raise ValueError(
+                        f"Sample '{input['name']}': modifications refer to chain "
+                        f"{chain_idx + 1}, but only {len(sequence_list)} chains "
+                        f"are present in sequences."
+                    )
             input["sequences"] = sequences
 
             inputs.append(input)
