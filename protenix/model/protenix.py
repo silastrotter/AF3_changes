@@ -118,6 +118,67 @@ class Protenix(nn.Module):
         nn.init.zeros_(self.linear_no_bias_z_cycle.weight)
         nn.init.zeros_(self.linear_no_bias_s.weight)
 
+    @staticmethod
+    def infer_ligand_token_length(token_asym_id) -> int:
+        """
+        Infer ligand token length as the number of tokens in the last chain.
+
+        Non-standard residues (e.g. ALY) are tokenized per heavy atom, so this
+        count can exceed the peptide residue length.
+        """
+        if not torch.is_tensor(token_asym_id):
+            token_asym_id = torch.as_tensor(token_asym_id)
+        token_asym_id = token_asym_id.reshape(-1)
+        last_asym = token_asym_id[-1]
+        ligand_length = int((token_asym_id == last_asym).sum().item())
+        if ligand_length < 1 or not bool(
+            torch.all(token_asym_id[-ligand_length:] == last_asym)
+        ):
+            raise ValueError(
+                "Failed to infer ligand_length: last-chain tokens are not a "
+                "contiguous suffix of the complex (ligand must be the final chain)."
+            )
+        return ligand_length
+
+    def resolve_ligand_token_length(self, full_data, ligand_length=None) -> int:
+        """
+        Resolve ligand token length, auto-detecting from token_asym_id when needed.
+
+        If ``ligand_length`` is None or <= 0, always detect. If a positive config
+        value disagrees with the detected last-chain length (common with PTMs),
+        prefer the detected value and warn once.
+        """
+        sample0 = full_data[0]
+        asym = sample0.get("token_asym_id", None) if isinstance(sample0, dict) else None
+        detected = None
+        if asym is not None:
+            detected = self.infer_ligand_token_length(asym)
+
+        if ligand_length is None or ligand_length <= 0:
+            if detected is None:
+                raise ValueError(
+                    "Cannot auto-detect ligand_length: full_data lacks token_asym_id. "
+                    "Set model.confidence_classifier.ligand_length explicitly."
+                )
+            if not getattr(self, "_logged_auto_ligand_length", False):
+                logger.info(
+                    f"Auto-detected classifier ligand_length={detected} "
+                    "(last-chain token count)."
+                )
+                self._logged_auto_ligand_length = True
+            return detected
+
+        if detected is not None and ligand_length != detected:
+            if not getattr(self, "_warned_ligand_length_mismatch", False):
+                logger.warning(
+                    f"Configured ligand_length={ligand_length} != detected last-chain "
+                    f"token count {detected} (PTMs like ALY expand non-std residues "
+                    f"to per-atom tokens). Using detected length {detected}."
+                )
+                self._warned_ligand_length_mismatch = True
+            return detected
+        return int(ligand_length)
+
     def get_classifier_input(self, summary_confidence, full_data, ligand_length):
         summary_confidence_keys = ['gpde', 'ranking_score', 'chain_ptm', 'chain_iptm', 'chain_plddt','has_clash','disorder']
         full_data_keys = ['token_pair_pae', 'token_pair_pde', 'contact_probs']
@@ -128,6 +189,8 @@ class Protenix(nn.Module):
 
         if self.configs.model.confidence_classifier.use_intersted_atom_mask:
             summary_confidence_keys.extend(['pb_ranking_score'])
+
+        ligand_length = self.resolve_ligand_token_length(full_data, ligand_length)
 
         features = []
         for sample_conf, sample_full in zip(summary_confidence, full_data):

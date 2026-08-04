@@ -255,8 +255,12 @@ model_configs = {
             'hidden_units': 1024,  # Example: number of hidden units in the MLP classifier
             'output_units': 2, # 0: non-binder, 1: binder one-hot-label
             'number_of_chains': 2,  
-            'ligand_length': 8, # token length
-            'n_token': 506,  # total token count (receptor + ligand)
+            # Token length of the last chain (ligand). Non-std PTMs (e.g. ALY) are
+            # per-atom tokens, so this can exceed the peptide residue count.
+            # Set to -1 to auto-detect from token_asym_id; a mismatched positive
+            # value is also overridden by the detected last-chain length.
+            'ligand_length': -1,
+            'n_token': 506,  # total token count (receptor + ligand); must match data
         }
     },
 }

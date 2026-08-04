@@ -12,6 +12,15 @@ class ConfidenceClassifier(nn.Module):
         use_intersted_atom_mask=False,
     ):
         super(ConfidenceClassifier, self).__init__()
+        if ligand_length is None or int(ligand_length) <= 0:
+            raise ValueError(
+                "confidence_classifier.ligand_length must be a positive token count "
+                "when building the MLP (got "
+                f"{ligand_length}). Feature extraction can auto-detect with -1, but "
+                "the classifier architecture needs the resolved last-chain token "
+                "length (expanded for PTMs like ALY)."
+            )
+        ligand_length = int(ligand_length)
         self.number_of_chains = number_of_chains
         self.n_token = n_token
         pair_feat_dim = (
