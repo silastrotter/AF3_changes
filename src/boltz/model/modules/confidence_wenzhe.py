@@ -22,7 +22,7 @@ import torch.nn as nn
 #hopefully this works
 from boltz.model.layers.pairformer import PairformerLayer
 from boltz.model.modules.utils import LinearNoBias
-from protenix.model.modules.deepsettransformer import DeepSetTransformerPooling
+from boltz.model.modules.deepsettransformer import DeepSetTransformerPooling
 from protenix.model.utils import broadcast_token_to_atom, one_hot
 from protenix.openfold_local.model.primitives import LayerNorm
 from protenix.utils.torch_utils import cdist
