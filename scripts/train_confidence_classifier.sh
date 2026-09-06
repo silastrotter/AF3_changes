@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Example feature and label paths (replace with your actual .pt files)
+# can we make this a one step thing instead of replace everywhere? low priority
 feat_paths=(
     "/home/fs01/wc648/protenix/output/feats_2K_screen_0.pt"
     "/home/fs01/wc648/protenix/output/feats_2K_screen_1.pt"
