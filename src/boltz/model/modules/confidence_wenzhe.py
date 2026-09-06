@@ -18,8 +18,9 @@ from typing import Optional, Union
 import torch
 import torch.nn as nn
 
-from protenix.model.modules.pairformer import PairformerStack
-from protenix.model.modules.primitives import LinearNoBias
+#change all of these to boltz equivalents
+from boltz.model.modules.pairformer import PairformerStack
+from boltz.model.modules.primitives import LinearNoBias
 from protenix.model.modules.deepsettransformer import DeepSetTransformerPooling
 from protenix.model.utils import broadcast_token_to_atom, one_hot
 from protenix.openfold_local.model.primitives import LayerNorm
