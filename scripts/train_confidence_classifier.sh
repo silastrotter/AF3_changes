@@ -25,6 +25,7 @@ label_paths=(
 feat_paths_str="${feat_paths[@]}"
 label_paths_str="${label_paths[@]}"
 
+#this is proabably part of the fixed length thing
 ligand_length=9  # Set this to your actual ligand length
 n_token=825      # Total token count (receptor + ligand)
 
