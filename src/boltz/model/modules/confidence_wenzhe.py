@@ -19,7 +19,8 @@ import torch
 import torch.nn as nn
 
 #change all of these to boltz equivalents
-from boltz.model.modules.pairformer import PairformerStack
+#hopefully this works
+from boltz.model.layers.pairformer import PairformerLayer
 from boltz.model.modules.primitives import LinearNoBias
 from protenix.model.modules.deepsettransformer import DeepSetTransformerPooling
 from protenix.model.utils import broadcast_token_to_atom, one_hot
