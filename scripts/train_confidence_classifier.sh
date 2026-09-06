@@ -29,6 +29,8 @@ label_paths_str="${label_paths[@]}"
 ligand_length=9  # Set this to your actual ligand length
 n_token=825      # Total token count (receptor + ligand)
 
+
+#definitely need to change this for boltz
 python3 /home/fs01/wc648/protenix/runner/train_MLP_classifier.py \
     --run_name 07162026_MLP_classifier_FTase \
     --feat_path $feat_paths_str \
